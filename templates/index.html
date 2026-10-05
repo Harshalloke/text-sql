@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Natural Language Database Assistant — Interact with your database using plain English. No SQL knowledge required.">
+    <title>QueryMind — Natural Language Database Assistant</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+    <!-- App CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!--  APP WRAPPER                                                  -->
+    <!-- ============================================================ -->
+    <div id="app" class="app">
+
+        <!-- LEFT SIDEBAR — Database & Schema -->
+        <aside id="sidebar-left" class="sidebar sidebar--left">
+            <div class="sidebar__header">
+                <div class="logo">
+                    <div class="logo__emblem">
+                        <div class="logo__emblem-glow"></div>
+                        <svg class="logo__emblem-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="url(#emblem-grad)" stroke="rgba(255,255,255,0.75)" stroke-width="1" stroke-linejoin="round"/>
+                            <circle cx="12" cy="12" r="2.2" fill="#ffffff"/>
+                            <defs>
+                                <linearGradient id="emblem-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                                    <stop stop-color="#ffffff" stop-opacity="0.35"/>
+                                    <stop offset="0.5" stop-color="#93c5fd" stop-opacity="0.2"/>
+                                    <stop offset="1" stop-color="#000000" stop-opacity="0.6"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <div class="logo__details">
+                        <div class="logo__brand">
+                            <span class="logo__brand-sans">Query</span><span class="logo__brand-serif">Mind</span>
+                        </div>
+                        <div class="logo__meta">
+                            <span class="logo__meta-dot"></span>
+                            <span class="logo__meta-text">Intelligence</span>
+                        </div>
+                    </div>
+                </div>
+                <button id="btn-toggle-left" class="sidebar__toggle" title="Toggle sidebar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+                </button>
+            </div>
+
+            <!-- Connection Status -->
+            <div id="connection-status" class="connection-status connection-status--disconnected">
+                <span class="connection-status__dot"></span>
+                <span class="connection-status__text">Not connected</span>
+            </div>
+
+            <!-- Connect Button -->
+            <button id="btn-connect" class="btn btn--primary btn--full">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                Connect Database
+            </button>
+
+            <!-- Schema Explorer -->
+            <div id="schema-explorer" class="schema-explorer" style="display:none;">
+                <div class="schema-explorer__header">
+                    <h3>Database Schema</h3>
+                    <button id="btn-refresh-schema" class="btn btn--icon" title="Refresh schema">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                    </button>
+                </div>
+                <div id="schema-tree" class="schema-tree"></div>
+            </div>
+
+            <!-- ML Anomaly Scan Button (shown when connected) -->
+            <!-- ML Anomaly Scan Button (shown when connected) -->
+            <div id="ml-tools" style="display:none; margin-bottom: var(--space-sm);">
+                <button id="btn-scan-anomaly" class="btn btn--anomaly btn--full" style="margin-bottom: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v3M11 14h.01"/></svg>
+                    <span id="btn-scan-anomaly-text">Scan for ML Anomalies</span>
+                </button>
+                <button id="btn-analyze-drivers" class="btn btn--anomaly btn--full">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    <span id="btn-analyze-drivers-text">Analyze ML Drivers</span>
+                </button>
+                <div class="ml-tools__hint">Powered by Random Forest · 100% Local</div>
+            </div>
+
+            <!-- Disconnect -->
+            <button id="btn-disconnect" class="btn btn--ghost btn--full btn--danger" style="display:none;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64A9 9 0 015.63 5.64M3.51 9a9 9 0 001.13 8.36"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                Disconnect
+            </button>
+        </aside>
+
+        <!-- CENTER — Chat Interface -->
+        <main id="chat-area" class="chat-area">
+            <!-- Chat Header -->
+            <div class="chat-area__header">
+                <button id="btn-open-left" class="btn btn--icon sidebar-open-btn" title="Open sidebar" style="display:none;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="chat-area__title">
+                    <h1>Chat with your Database</h1>
+                    <p>Ask questions, modify data, and explore — all in plain English</p>
+                </div>
+                <button id="btn-open-right" class="btn btn--icon sidebar-open-btn" title="Operation history" style="display:none;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </button>
+                <button id="btn-toggle-right" class="btn btn--icon" title="Toggle history">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </button>
+            </div>
+
+            <!-- Messages Container -->
+            <div id="messages" class="messages">
+                <!-- Welcome Message -->
+                <div class="message message--assistant message--welcome">
+                    <div class="message__avatar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                            <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+                            <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+                        </svg>
+                    </div>
+                    <div class="message__content">
+                        <div class="message__bubble">
+                            <h2>Welcome to QueryMind! 👋</h2>
+                            <p>I'm your natural language database assistant. Connect your database and start asking questions in plain English.</p>
+                            <div class="welcome-examples">
+                                <h3>Try asking things like:</h3>
+                                <div class="welcome-examples__grid">
+                                    <button class="example-chip" data-query="Show me all tables in the database">"Show me all tables"</button>
+                                    <button class="example-chip" data-query="How many records are in each table?">"How many records per table?"</button>
+                                    <button class="example-chip" data-query="Show the top 10 rows from the first table">"Show top 10 rows"</button>
+                                    <button class="example-chip" data-query="What are the column names and types in all tables?">"Describe all columns"</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="typing-indicator" class="typing-indicator" style="display:none;">
+                <div class="message__avatar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+                        <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+                    </svg>
+                </div>
+                <div class="typing-indicator__text" id="typing-text">
+                    Analyzing data...
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <div class="chat-input-wrapper">
+                    <textarea id="chat-input" class="chat-input" placeholder="Ask something about your database..." rows="1" disabled></textarea>
+                    <button id="btn-send" class="btn btn--send" disabled title="Send message">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </div>
+                <div class="chat-input-hint">
+                    Press <kbd>Enter</kbd> to send · <kbd>Shift+Enter</kbd> for new line
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR — History -->
+        <aside id="sidebar-right" class="sidebar sidebar--right">
+            <div class="sidebar__header">
+                <h3>Operation History</h3>
+                <button id="btn-toggle-right-close" class="sidebar__toggle" title="Close history">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+
+            <!-- History Stats -->
+            <div id="history-stats" class="history-stats">
+                <div class="history-stat">
+                    <span class="history-stat__count" id="stat-total">0</span>
+                    <span class="history-stat__label">Total</span>
+                </div>
+                <div class="history-stat history-stat--success">
+                    <span class="history-stat__count" id="stat-success">0</span>
+                    <span class="history-stat__label">Success</span>
+                </div>
+                <div class="history-stat history-stat--error">
+                    <span class="history-stat__count" id="stat-failed">0</span>
+                    <span class="history-stat__label">Failed</span>
+                </div>
+            </div>
+
+            <!-- History List -->
+            <div id="history-list" class="history-list">
+                <div class="history-empty">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <p>No operations yet</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  CONNECTION MODAL                                             -->
+    <!-- ============================================================ -->
+    <div id="connect-modal" class="modal" style="display:none;">
+        <div class="modal__backdrop"></div>
+        <div class="modal__content">
+            <div class="modal__header">
+                <h2>Connect Data Source</h2>
+                <button id="btn-close-modal" class="btn btn--icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            
+            <div class="modal-tabs">
+                <button type="button" class="modal-tab active" data-tab="connect">Connect Database</button>
+                <button type="button" class="modal-tab" data-tab="upload">Upload CSV/Excel</button>
+            </div>
+            
+            <div id="connect-error" class="error-msg" style="display:none;"></div>
+            
+            <!-- Upload File Form -->
+            <form id="upload-form" class="connect-form" style="display: none;">
+                <div class="drop-zone" id="drop-zone">
+                    <div class="drop-zone__icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </div>
+                    <span class="drop-zone__prompt">Drag & Drop CSV or Excel file here or click to browse</span>
+                    <input type="file" name="file" id="file-input" class="drop-zone__input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+                </div>
+                
+                <div class="modal__footer">
+                    <button type="submit" id="btn-submit-upload" class="btn btn--primary" disabled>
+                        <span class="btn__text">Upload & Connect</span>
+                        <span class="btn__loader" style="display:none;">
+                            <span class="spinner"></span> Uploading...
+                        </span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- DB Type Tabs -->
+            <div id="connect-db-container">
+                <div class="db-tabs">
+                    <button class="db-tab db-tab--active" data-type="sqlite">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        SQLite
+                    </button>
+                <button class="db-tab" data-type="mysql">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+                    MySQL
+                </button>
+                <button class="db-tab" data-type="postgresql">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+                    PostgreSQL
+                </button>
+                </div>
+
+                <!-- Connection Forms -->
+                <form id="connect-form" class="connect-form">
+                    <!-- SQLite Form -->
+                <div id="form-sqlite" class="connect-form__fields">
+                    <div class="form-group">
+                        <label for="sqlite-path">Database File Path</label>
+                        <input type="text" id="sqlite-path" placeholder="e.g., C:\data\mydb.sqlite or /home/user/data.db">
+                        <span class="form-hint">Enter the full path to your SQLite database file</span>
+                    </div>
+                </div>
+
+                <!-- MySQL Form -->
+                <div id="form-mysql" class="connect-form__fields" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mysql-host">Host</label>
+                            <input type="text" id="mysql-host" placeholder="localhost" value="localhost">
+                        </div>
+                        <div class="form-group form-group--small">
+                            <label for="mysql-port">Port</label>
+                            <input type="number" id="mysql-port" placeholder="3306" value="3306">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mysql-user">Username</label>
+                            <input type="text" id="mysql-user" placeholder="root">
+                        </div>
+                        <div class="form-group">
+                            <label for="mysql-password">Password</label>
+                            <input type="password" id="mysql-password" placeholder="••••••••">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mysql-database">Database Name</label>
+                        <input type="text" id="mysql-database" placeholder="my_database">
+                    </div>
+                </div>
+
+                <!-- PostgreSQL Form -->
+                <div id="form-postgresql" class="connect-form__fields" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pg-host">Host</label>
+                            <input type="text" id="pg-host" placeholder="localhost" value="localhost">
+                        </div>
+                        <div class="form-group form-group--small">
+                            <label for="pg-port">Port</label>
+                            <input type="number" id="pg-port" placeholder="5432" value="5432">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pg-user">Username</label>
+                            <input type="text" id="pg-user" placeholder="postgres">
+                        </div>
+                        <div class="form-group">
+                            <label for="pg-password">Password</label>
+                            <input type="password" id="pg-password" placeholder="••••••••">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="pg-database">Database Name</label>
+                        <input type="text" id="pg-database" placeholder="my_database">
+                    </div>
+                </div>
+
+                <!-- Error Display -->
+                <div id="connect-error" class="connect-error" style="display:none;"></div>
+
+                    <!-- Submit -->
+                    <div class="modal__footer">
+                        <button type="button" id="btn-cancel-connect" class="btn btn--ghost">Cancel</button>
+                        <button type="submit" id="btn-submit-connect" class="btn btn--primary">
+                            <span class="btn__text">Connect</span>
+                            <span class="btn__loader" style="display:none;">
+                                <span class="spinner"></span> Connecting...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  DATA VIEWER MODAL                                            -->
+    <!-- ============================================================ -->
+    <div id="data-viewer-modal" class="modal" style="display: none;">
+        <div class="modal__backdrop"></div>
+        <div class="modal__content modal__content--large">
+            <div class="modal__header">
+                <h2 id="data-viewer-title">Table Data</h2>
+                <button type="button" id="btn-close-data-viewer" class="btn btn--icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            
+            <div id="data-viewer-loader" class="data-viewer-loader" style="display: none;">
+                <span class="spinner"></span> Loading data...
+            </div>
+            
+            <div id="data-viewer-content" class="data-viewer-content">
+                <!-- Table will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  TOAST NOTIFICATIONS                                          -->
+    <!-- ============================================================ -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ML Anomaly Results Modal -->
+    <div id="anomaly-modal" class="anomaly-modal" style="display:none;">
+        <div class="anomaly-modal__backdrop" id="anomaly-backdrop"></div>
+        <div class="anomaly-modal__panel">
+            <div class="anomaly-modal__header">
+                <div class="anomaly-modal__title">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v3M11 14h.01"/></svg>
+                    <span>ML Anomaly Detection Results</span>
+                    <span class="anomaly-modal__badge">Isolation Forest + LOF</span>
+                </div>
+                <button class="anomaly-modal__close" id="anomaly-close">&times;</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="anomaly-summary" id="anomaly-summary"></div>
+
+            <!-- Table Selector (multi-table) -->
+            <div class="anomaly-table-select" id="anomaly-table-select" style="display:none;">
+                <label>Analyzing table:</label>
+                <select id="anomaly-table-picker"></select>
+                <button class="btn btn--anomaly" id="btn-run-on-table" style="padding: 6px 14px; font-size: 0.8rem;">Run on this table</button>
+            </div>
+
+            <!-- Results Table -->
+            <div class="anomaly-results" id="anomaly-results">
+                <div class="anomaly-loading" id="anomaly-loading">
+                    <div class="anomaly-loading__spinner"></div>
+                    <p>Running Isolation Forest &amp; Local Outlier Factor...</p>
+                    <small>Analyzing up to 5,000 rows locally. No API call needed.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ML Drivers Results Modal -->
+    <div id="drivers-modal" class="anomaly-modal" style="display:none;">
+        <div class="anomaly-modal__backdrop" id="drivers-backdrop"></div>
+        <div class="anomaly-modal__panel">
+            <div class="anomaly-modal__header">
+                <div class="anomaly-modal__title">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    <span>Feature Importance Drivers</span>
+                    <span class="anomaly-modal__badge" style="color:#93c5fd; background:rgba(147,197,253,0.1); border-color:rgba(147,197,253,0.25);">Random Forest</span>
+                </div>
+                <button class="anomaly-modal__close" id="drivers-close">&times;</button>
+            </div>
+
+            <!-- Table & Target Selector -->
+            <div class="anomaly-table-select" style="display:flex; justify-content: space-between;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label>Table:</label>
+                    <select id="drivers-table-picker"></select>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <label>Target to Explain:</label>
+                    <select id="drivers-target-picker"></select>
+                </div>
+                <button class="btn btn--anomaly" id="btn-run-drivers" style="padding: 6px 14px; font-size: 0.8rem; background: rgba(147,197,253,0.06); border-color: rgba(147,197,253,0.22); color: #93c5fd; width:auto;">Analyze Drivers</button>
+            </div>
+
+            <!-- Results -->
+            <div class="anomaly-results" id="drivers-results">
+                <div class="anomaly-loading" id="drivers-loading" style="display:none;">
+                    <div class="anomaly-loading__spinner" style="border-top-color:#93c5fd;"></div>
+                    <p>Training Random Forest to extract feature importances...</p>
+                    <small>Analyzing up to 5,000 rows locally.</small>
+                </div>
+                
+                <div id="drivers-content" style="display:none;">
+                    <!-- Driver bars will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Scripts -->
+    <script src="/static/js/visualization.js"></script>
+    <script src="/static/js/history.js"></script>
+    <script src="/static/js/database.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/anomaly.js"></script>
+    <script src="/static/js/drivers.js"></script>
+    <script src="/static/js/app.js"></script>
+
+</body>
+</html>

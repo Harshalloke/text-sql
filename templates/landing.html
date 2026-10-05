@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QueryMind — Natural Language Database Assistant</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --c-text-primary: #ffffff;
+            --c-text-secondary: rgba(255, 255, 255, 0.7);
+            --font-sans: 'Inter', sans-serif;
+            --font-serif: 'Playfair Display', serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            height: 100%;
+            width: 100%;
+            font-family: var(--font-sans);
+            color: var(--c-text-primary);
+            background-color: #050a10; /* Fallback dark slate */
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Cinematic Background */
+        .bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background-image: url("{{ url_for('static', filename='img/pinsnap-693132198942261770.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            /* Subtle zoom animation for premium feel */
+            animation: bg-pan 40s ease-in-out infinite alternate;
+        }
+
+        /* Subtle vignette/overlay to ensure text readability */
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%),
+                        linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.8) 100%);
+        }
+
+        @keyframes bg-pan {
+            0% { transform: scale(1.0); }
+            100% { transform: scale(1.1); }
+        }
+
+        /* Entrance Animations */
+        @keyframes fadeUp {
+            0% { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes revealText {
+            0% { clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%); transform: translateY(50px); opacity: 0; }
+            100% { clip-path: polygon(0 -20%, 120% -20%, 120% 120%, 0 120%); transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes rollIn {
+            0% { 
+                transform: translateY(100%); 
+                clip-path: polygon(0 0, 100% 0, 100% 0, 0 0);
+                opacity: 0;
+            }
+            100% { 
+                transform: translateY(0); 
+                clip-path: polygon(0 -50%, 100% -50%, 100% 150%, 0 150%);
+                opacity: 1;
+            }
+        }
+
+        @keyframes rollOut {
+            0% { 
+                transform: translateY(0); 
+                clip-path: polygon(0 -50%, 100% -50%, 100% 150%, 0 150%);
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(-100%); 
+                clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+                opacity: 0;
+            }
+        }
+
+        /* Apply Animations */
+        .nav { animation: fadeIn 1.5s ease 0.5s both; }
+        .nav-middle { animation: fadeIn 1.5s ease 1s both; }
+        .floating-text { animation: fadeUp 1.5s ease 1.5s both; }
+        .footer-info { animation: fadeUp 1.5s ease 1.2s both; }
+        
+        .hero__title--sans {
+            display: inline-block;
+            animation: revealText 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .hero__title--split {
+            display: inline-flex;
+            align-items: baseline;
+            justify-content: center;
+        }
+
+        .hero__dynamic-wrapper {
+            display: inline-flex;
+            justify-content: flex-end;
+            align-items: baseline;
+            width: 4.8em;
+            margin-right: 0.2em;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .hero__title--dynamic {
+            display: inline-flex;
+            justify-content: flex-end;
+            align-items: baseline;
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-weight: 400;
+            opacity: 0.95;
+            position: relative;
+            height: 1.4em;
+            margin-bottom: -0.08em;
+            width: 100%;
+            overflow: hidden;
+            vertical-align: baseline;
+            transform: translateY(0.12em);
+        }
+
+        .word-layer {
+            display: inline-flex;
+            justify-content: flex-end;
+            align-items: baseline;
+            position: absolute;
+            right: 0;
+            bottom: 0.04em;
+            padding: 0 0.08em;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .char-span {
+            display: inline-block;
+            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform, opacity;
+        }
+
+        /* Incoming state (starts below) */
+        .word-layer.layer-incoming .char-span {
+            transform: translateY(140%);
+            opacity: 0;
+        }
+
+        /* Active / Visible state */
+        .word-layer.layer-active .char-span {
+            transform: translateY(0%);
+            opacity: 1;
+        }
+
+        /* Outgoing state (rolls up simultaneously) */
+        .word-layer.layer-outgoing .char-span {
+            transform: translateY(-140%);
+            opacity: 0;
+        }
+        
+        /* Stagger text reveals */
+        .hero__title:nth-child(2) .hero__title--sans { animation-delay: 0.7s; }
+        
+        .hero__subtitle {
+            animation: fadeUp 1.2s ease 0.8s both;
+        }
+        
+        .hero__cta {
+            animation: fadeUp 1.2s ease 1s both;
+        }
+
+        /* Navigation */
+        .nav {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 2.5rem 4rem;
+            z-index: 10;
+        }
+
+        .nav__links {
+            display: flex;
+            gap: 2.5rem;
+        }
+
+        .nav__link {
+            color: var(--c-text-primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 400;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav__link:hover {
+            opacity: 1;
+        }
+
+        .nav__logo {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        /* Middle Navigation (Floating) */
+        .nav-middle {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 4rem;
+            transform: translateY(-50%);
+            z-index: 5;
+            pointer-events: none; /* Let clicks pass through to background if needed */
+        }
+
+        .nav-middle__group {
+            display: flex;
+            gap: 4rem;
+            pointer-events: auto;
+        }
+
+        /* Hero Content */
+        .hero {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            width: 100%;
+            z-index: 10;
+            padding: 0 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* The Artistic Typography Mix */
+        .hero__title {
+            font-size: 7vw;
+            line-height: 1;
+            white-space: nowrap;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 10px 40px rgba(0,0,0,0.8), 0 2px 10px rgba(0,0,0,0.5);
+            perspective: 1000px;
+        }
+
+    /* REMOVED .hero__title--serif SINCE WE USE .hero__title--dynamic */
+
+        .hero__title--sans, .hero__title--sans-fixed {
+            font-family: var(--font-sans);
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            display: inline-block;
+        }
+
+        .hero__subtitle {
+            font-family: var(--font-sans);
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+            color: var(--c-text-secondary);
+            margin-top: 1.5rem;
+            text-transform: uppercase;
+        }
+
+        /* Call to Action Button */
+        .hero__cta {
+            margin-top: 4rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 2.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 100px;
+            font-size: 1rem;
+            font-weight: 400;
+            letter-spacing: 0.05em;
+            transition: all 0.4s ease;
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hero__cta::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(100%);
+            transition: transform 0.4s ease;
+            z-index: -1;
+        }
+
+        .hero__cta:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .hero__cta:hover::before {
+            transform: translateY(0);
+        }
+
+        /* Footer Info */
+        .footer-info {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 0 4rem;
+            z-index: 10;
+        }
+
+        .footer__brand {
+            display: flex;
+            align-items: flex-end;
+            gap: 1rem;
+        }
+
+        .footer__brand h2 {
+            font-family: var(--font-sans);
+            font-weight: 300;
+            font-size: 2.5rem;
+            line-height: 0.8;
+            letter-spacing: -0.02em;
+        }
+
+        .footer__brand span {
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 2.5rem;
+            line-height: 0.8;
+        }
+
+        .footer__year {
+            font-size: 0.9rem;
+            opacity: 0.6;
+            margin-bottom: 2px;
+        }
+
+        .footer__scroll {
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 1.1rem;
+            color: var(--c-text-secondary);
+        }
+
+        .footer__desc {
+            max-width: 300px;
+            text-align: right;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--c-text-secondary);
+            font-weight: 300;
+        }
+        
+        /* Floating annotation */
+        .floating-text {
+            position: absolute;
+            top: 25%;
+            right: 25%;
+            text-align: right;
+            font-size: 0.8rem;
+            color: var(--c-text-secondary);
+            line-height: 1.4;
+        }
+        .floating-text span {
+            font-family: var(--font-serif);
+            font-style: italic;
+            font-size: 0.9rem;
+            color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .nav-middle { display: none; }
+            .hero__title { font-size: 9vw; }
+            .nav, .footer-info { padding: 2rem; }
+        }
+
+        @media (max-width: 768px) {
+            .hero__title { font-size: 12vw; }
+            .footer__brand h2, .footer__brand span { font-size: 1.8rem; }
+            .footer__desc, .floating-text, .footer__scroll { display: none; }
+            .nav__links { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background Layer -->
+    <div class="bg-container"></div>
+    <div class="bg-overlay"></div>
+
+    <!-- Top Navigation -->
+    <nav class="nav">
+        <div class="nav__links">
+            <a href="#" class="nav__link">Github</a>
+            <a href="#" class="nav__link">Documentation</a>
+        </div>
+        <div class="nav__logo">QUERYMIND</div>
+        <div class="nav__links">
+            <a href="#" class="nav__link">Features</a>
+            <a href="#" class="nav__link">Architecture</a>
+        </div>
+    </nav>
+
+    <!-- Floating Annotation -->
+    <div class="floating-text">
+        Data <span>Evolution</span><br>
+        Mind <span>Expansion</span>
+    </div>
+
+    <!-- Middle Edge Links -->
+    <div class="nav-middle">
+        <div class="nav-middle__group">
+            <a href="#" class="nav__link">About</a>
+            <a href="#" class="nav__link">Core Engine</a>
+        </div>
+        <div class="nav-middle__group">
+            <a href="#" class="nav__link">Security</a>
+            <a href="#" class="nav__link">Capabilities</a>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <main class="hero">
+        <h1 class="hero__title hero__title--split">
+            <span class="hero__dynamic-wrapper">
+                <span id="dynamic-word" class="hero__title--dynamic"></span>
+            </span>
+            <span class="hero__title--sans-fixed">Database</span>
+        </h1>
+        <h1 class="hero__title">
+            <span class="hero__title--sans">Intelligence</span>
+        </h1>
+        <p class="hero__subtitle">AI-Powered Database Assistant</p>
+        
+        <a href="/app" class="hero__cta">Enter Workspace</a>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer-info">
+        <div class="footer__brand">
+            <h2>Query</h2><span>Mind</span>
+            <span class="footer__year">2026</span>
+        </div>
+        
+        <div class="footer__scroll">
+            Talk to Data
+        </div>
+        
+        <div class="footer__desc">
+            I'm an AI database assistant focused on<br>
+            translating natural language into precise SQL.<br>
+            I believe querying should be effortless.
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const words = ["Natural", "Fluid", "Seamless", "Intelligent", "Effortless"];
+            const dynamicWordEl = document.getElementById('dynamic-word');
+            let currentWordIndex = 0;
+
+            function createLayer(word, initialClass) {
+                const layer = document.createElement('span');
+                layer.className = `word-layer ${initialClass}`;
+                
+                word.split('').forEach((letter, i) => {
+                    const span = document.createElement('span');
+                    span.textContent = letter === ' ' ? '\u00A0' : letter;
+                    span.className = 'char-span';
+                    // Smooth stagger wave
+                    span.style.transitionDelay = `${i * 0.035}s`;
+                    if (i > 0) {
+                        span.style.marginLeft = '-0.04em';
+                    }
+                    layer.appendChild(span);
+                });
+                
+                return layer;
+            }
+
+            // Initial load
+            let currentLayer = createLayer(words[0], 'layer-incoming');
+            dynamicWordEl.appendChild(currentLayer);
+            
+            // Trigger initial entrance roll
+            setTimeout(() => {
+                currentLayer.className = 'word-layer layer-active';
+            }, 60);
+
+            function transitionToNextWord(nextWord) {
+                const incomingLayer = createLayer(nextWord, 'layer-incoming');
+                dynamicWordEl.appendChild(incomingLayer);
+
+                // Start simultaneous fluid transition in the next rendering frames
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        currentLayer.className = 'word-layer layer-outgoing';
+                        incomingLayer.className = 'word-layer layer-active';
+
+                        const oldLayer = currentLayer;
+                        currentLayer = incomingLayer;
+
+                        // Safely remove the retired layer after transition finishes
+                        setTimeout(() => {
+                            if (oldLayer && oldLayer.parentNode) {
+                                oldLayer.parentNode.removeChild(oldLayer);
+                            }
+                        }, 1100);
+                    });
+                });
+            }
+
+            // Cycle words every 3.5 seconds
+            setInterval(() => {
+                currentWordIndex = (currentWordIndex + 1) % words.length;
+                transitionToNextWord(words[currentWordIndex]);
+            }, 3500);
+        });
+    </script>
+</body>
+</html>

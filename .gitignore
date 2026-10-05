@@ -1,0 +1,15 @@
+# Environment
+venv/
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# Session files
+flask_session/
+
+# OS
+.DS_Store
+Thumbs.db
