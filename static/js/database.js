@@ -1,15 +1,15 @@
 /**
  * Database Connection Module
- * Handles the connect modal, DB type switching, and schema tree rendering.
+ * CALM Design: Quiet connect panel, plain text tabs, inline schema viewer,
+ * and quiet table row preview.
  */
 
 const Database = (() => {
-    // --- DOM references ---
     const els = {};
     let currentDbType = 'sqlite';
 
     function init() {
-        // Cache elements
+        // Cache DOM references
         els.btnConnect = document.getElementById('btn-connect');
         els.btnDisconnect = document.getElementById('btn-disconnect');
         els.btnCloseModal = document.getElementById('btn-close-modal');
@@ -17,7 +17,7 @@ const Database = (() => {
         els.btnRefreshSchema = document.getElementById('btn-refresh-schema');
         els.modal = document.getElementById('connect-modal');
         els.modalBackdrop = els.modal.querySelector('.modal__backdrop');
-        
+
         // Data Viewer Modal
         els.dataViewerModal = document.getElementById('data-viewer-modal');
         els.dataViewerClose = document.getElementById('btn-close-data-viewer');
@@ -25,6 +25,8 @@ const Database = (() => {
         els.dataViewerTitle = document.getElementById('data-viewer-title');
         els.dataViewerContent = document.getElementById('data-viewer-content');
         els.dataViewerLoader = document.getElementById('data-viewer-loader');
+
+        // Forms and Status
         els.connectForm = document.getElementById('connect-form');
         els.connectError = document.getElementById('connect-error');
         els.connectionStatus = document.getElementById('connection-status');
@@ -32,170 +34,169 @@ const Database = (() => {
         els.schemaTree = document.getElementById('schema-tree');
         els.submitBtn = document.getElementById('btn-submit-connect');
 
-        // DB type tabs
+        // DB Tabs
         els.dbTabs = document.querySelectorAll('.db-tab');
         els.formSqlite = document.getElementById('form-sqlite');
         els.formMysql = document.getElementById('form-mysql');
         els.formPostgresql = document.getElementById('form-postgresql');
 
-        // Modal Top Tabs
-        els.modalTabs = document.querySelectorAll('.modal-tab');
+        // Upload Form & Toggles
         els.uploadForm = document.getElementById('upload-form');
         els.connectDbContainer = document.getElementById('connect-db-container');
-
-        // Drop Zone
+        els.btnSwitchToUpload = document.getElementById('btn-switch-to-upload');
+        els.btnSwitchToDb = document.getElementById('btn-switch-to-db');
         els.dropZone = document.getElementById('drop-zone');
         els.fileInput = document.getElementById('file-input');
-        els.dropZonePrompt = els.dropZone.querySelector('.drop-zone__prompt');
+        els.dropZonePrompt = els.dropZone?.querySelector('.drop-zone__prompt');
         els.btnSubmitUpload = document.getElementById('btn-submit-upload');
 
-        // Events
-        els.btnConnect.addEventListener('click', openModal);
-        els.btnCloseModal.addEventListener('click', closeModal);
-        els.btnCancelConnect.addEventListener('click', closeModal);
-        els.modalBackdrop.addEventListener('click', closeModal);
-        els.btnDisconnect.addEventListener('click', disconnect);
-        els.connectForm.addEventListener('submit', handleConnect);
-        els.btnRefreshSchema.addEventListener('click', refreshSchema);
-        
-        // Data viewer events
-        els.dataViewerClose.addEventListener('click', closeDataViewer);
-        els.dataViewerBackdrop.addEventListener('click', closeDataViewer);
+        // Event Listeners
+        if (els.btnConnect) els.btnConnect.addEventListener('click', openModal);
+        if (els.btnCloseModal) els.btnCloseModal.addEventListener('click', closeModal);
+        if (els.btnCancelConnect) els.btnCancelConnect.addEventListener('click', closeModal);
+        if (els.modalBackdrop) els.modalBackdrop.addEventListener('click', closeModal);
+        if (els.btnDisconnect) els.btnDisconnect.addEventListener('click', disconnect);
+        if (els.connectForm) els.connectForm.addEventListener('submit', handleConnect);
+        if (els.btnRefreshSchema) els.btnRefreshSchema.addEventListener('click', refreshSchema);
+
+        if (els.dataViewerClose) els.dataViewerClose.addEventListener('click', closeDataViewer);
+        if (els.dataViewerBackdrop) els.dataViewerBackdrop.addEventListener('click', closeDataViewer);
 
         els.dbTabs.forEach(tab => {
             tab.addEventListener('click', () => switchDbType(tab.dataset.type));
         });
 
-        // Modal top tabs
-        els.modalTabs.forEach(tab => {
-            tab.addEventListener('click', () => switchModalTab(tab.dataset.tab));
-        });
+        // Switch between DB tabs and File Upload
+        if (els.btnSwitchToUpload) {
+            els.btnSwitchToUpload.addEventListener('click', () => {
+                if (els.connectDbContainer) els.connectDbContainer.style.display = 'none';
+                if (els.uploadForm) els.uploadForm.style.display = 'block';
+                if (els.connectError) els.connectError.style.display = 'none';
+            });
+        }
 
-        // Drop zone events
-        els.fileInput.addEventListener('change', handleFileSelect);
-        els.dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            els.dropZone.classList.add('drop-zone--over');
-        });
-        els.dropZone.addEventListener('dragleave', () => {
-            els.dropZone.classList.remove('drop-zone--over');
-        });
-        els.dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            els.dropZone.classList.remove('drop-zone--over');
-            if (e.dataTransfer.files.length) {
-                els.fileInput.files = e.dataTransfer.files;
-                handleFileSelect();
-            }
-        });
-        els.uploadForm.addEventListener('submit', handleUpload);
-    }
+        if (els.btnSwitchToDb) {
+            els.btnSwitchToDb.addEventListener('click', () => {
+                if (els.uploadForm) els.uploadForm.style.display = 'none';
+                if (els.connectDbContainer) els.connectDbContainer.style.display = 'block';
+                if (els.connectError) els.connectError.style.display = 'none';
+            });
+        }
 
-    function switchModalTab(tabName) {
-        els.modalTabs.forEach(t => t.classList.remove('active'));
-        document.querySelector(`.modal-tab[data-tab="${tabName}"]`).classList.add('active');
+        // Drop zone file select
+        if (els.dropZone && els.fileInput) {
+            els.dropZone.addEventListener('click', () => els.fileInput.click());
+            els.fileInput.addEventListener('change', handleFileSelect);
 
-        if (tabName === 'upload') {
-            els.connectForm.style.display = 'none';
-            els.connectDbContainer.style.display = 'none';
-            els.uploadForm.style.display = 'block';
-        } else {
-            els.uploadForm.style.display = 'none';
-            els.connectForm.style.display = 'block';
-            els.connectDbContainer.style.display = 'block';
+            els.dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                els.dropZone.classList.add('dragover');
+            });
+            els.dropZone.addEventListener('dragleave', () => {
+                els.dropZone.classList.remove('dragover');
+            });
+            els.dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                els.dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    els.fileInput.files = e.dataTransfer.files;
+                    handleFileSelect();
+                }
+            });
+        }
+
+        if (els.uploadForm) {
+            els.uploadForm.addEventListener('submit', handleUpload);
         }
     }
 
     function handleFileSelect() {
         if (els.fileInput.files.length > 0) {
             els.dropZonePrompt.textContent = els.fileInput.files[0].name;
-            els.btnSubmitUpload.disabled = false;
+            if (els.btnSubmitUpload) els.btnSubmitUpload.disabled = false;
         } else {
-            els.dropZonePrompt.textContent = "Drag & Drop CSV or Excel file here or click to browse";
-            els.btnSubmitUpload.disabled = true;
+            els.dropZonePrompt.textContent = 'Drag & drop a CSV or Excel file here, or click to browse';
+            if (els.btnSubmitUpload) els.btnSubmitUpload.disabled = true;
         }
     }
 
     async function handleUpload(e) {
         e.preventDefault();
-        
         if (!els.fileInput.files.length) return;
-        
+
         const file = els.fileInput.files[0];
         const formData = new FormData();
         formData.append('file', file);
 
-        els.connectError.style.display = 'none';
-        
-        // UI loading state
+        if (els.connectError) els.connectError.style.display = 'none';
+
+        const btnText = els.btnSubmitUpload.querySelector('.btn__text');
+        const btnLoader = els.btnSubmitUpload.querySelector('.btn__loader');
+        if (btnText) btnText.style.display = 'none';
+        if (btnLoader) btnLoader.style.display = 'inline';
         els.btnSubmitUpload.disabled = true;
-        els.btnSubmitUpload.querySelector('.btn__text').style.display = 'none';
-        els.btnSubmitUpload.querySelector('.btn__loader').style.display = 'inline-flex';
 
         try {
             const res = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData
             });
-
             const data = await res.json();
-            
+
             if (data.success) {
                 closeModal();
                 setConnected(data.schema);
-                App.toast('File uploaded and database connected successfully!');
-                Chat.fetchInsights();
+                const tableCount = Object.keys(data.schema.tables || {}).length;
+                App.toast(`Connected. Found ${tableCount} table(s).`, 'success');
                 Chat.enableInput();
+                Chat.showConnectedInsights(data.schema);
             } else {
-                showError(data.error || 'Upload failed');
+                showError(data.error || 'Upload failed.');
             }
         } catch (err) {
-            showError('Network error during upload');
+            showError('Network error during upload.');
         } finally {
-            // Reset UI
+            if (btnText) btnText.style.display = 'inline';
+            if (btnLoader) btnLoader.style.display = 'none';
             els.btnSubmitUpload.disabled = false;
-            els.btnSubmitUpload.querySelector('.btn__text').style.display = 'inline';
-            els.btnSubmitUpload.querySelector('.btn__loader').style.display = 'none';
         }
     }
 
     function openModal() {
+        if (!els.modal) return;
         els.modal.style.display = 'flex';
-        els.connectError.style.display = 'none';
-        // Focus first input
+        if (els.connectError) els.connectError.style.display = 'none';
+
         setTimeout(() => {
-            const visibleForm = document.querySelector('.connect-form__fields:not([style*="display: none"]) input');
-            if (visibleForm) visibleForm.focus();
-        }, 100);
+            const activeInput = els.modal.querySelector('.connect-form__fields:not([style*="display: none"]) input');
+            if (activeInput) activeInput.focus();
+        }, 80);
     }
 
     function closeModal() {
-        els.modal.style.display = 'none';
+        if (els.modal) els.modal.style.display = 'none';
     }
 
     function switchDbType(type) {
         currentDbType = type;
-        els.dbTabs.forEach(t => t.classList.toggle('db-tab--active', t.dataset.type === type));
-        els.formSqlite.style.display = type === 'sqlite' ? '' : 'none';
-        els.formMysql.style.display = type === 'mysql' ? '' : 'none';
-        els.formPostgresql.style.display = type === 'postgresql' ? '' : 'none';
-        els.connectError.style.display = 'none';
+        els.dbTabs.forEach(t => t.classList.toggle('active', t.dataset.type === type));
+        if (els.formSqlite) els.formSqlite.style.display = type === 'sqlite' ? '' : 'none';
+        if (els.formMysql) els.formMysql.style.display = type === 'mysql' ? '' : 'none';
+        if (els.formPostgresql) els.formPostgresql.style.display = type === 'postgresql' ? '' : 'none';
+        if (els.connectError) els.connectError.style.display = 'none';
     }
 
     async function handleConnect(e) {
         e.preventDefault();
-        els.connectError.style.display = 'none';
+        if (els.connectError) els.connectError.style.display = 'none';
 
-        // Show loader
         const btnText = els.submitBtn.querySelector('.btn__text');
         const btnLoader = els.submitBtn.querySelector('.btn__loader');
-        btnText.style.display = 'none';
-        btnLoader.style.display = 'inline-flex';
+        if (btnText) btnText.style.display = 'none';
+        if (btnLoader) btnLoader.style.display = 'inline';
         els.submitBtn.disabled = true;
 
-        // Build payload
         const payload = { db_type: currentDbType };
-
         if (currentDbType === 'sqlite') {
             payload.path = document.getElementById('sqlite-path').value.trim();
         } else if (currentDbType === 'mysql') {
@@ -218,63 +219,85 @@ const Database = (() => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
-
             const data = await res.json();
 
             if (data.success) {
                 closeModal();
                 setConnected(data.schema);
-                App.toast('Connected to database!', 'success');
-                Chat.fetchInsights();
+                const tableCount = Object.keys(data.schema.tables || {}).length;
+                App.toast(`Connected. Found ${tableCount} table(s).`, 'success');
                 Chat.enableInput();
+                Chat.showConnectedInsights(data.schema);
             } else {
                 showError(data.error || 'Connection failed.');
             }
         } catch (err) {
-            showError('Could not reach the server. Is it running?');
+            showError('Could not reach the server. Please verify Flask is running.');
         } finally {
-            btnText.style.display = '';
-            btnLoader.style.display = 'none';
+            if (btnText) btnText.style.display = 'inline';
+            if (btnLoader) btnLoader.style.display = 'none';
             els.submitBtn.disabled = false;
         }
     }
 
     function showError(msg) {
+        if (!els.connectError) return;
         els.connectError.textContent = msg;
         els.connectError.style.display = 'block';
     }
 
     function setConnected(schema) {
-        els.connectionStatus.className = 'connection-status connection-status--connected';
-        els.connectionStatus.querySelector('.connection-status__text').textContent =
-            `${schema.database_name} (${schema.database_type})`;
-        els.btnConnect.style.display = 'none';
-        els.btnDisconnect.style.display = '';
-        els.schemaExplorer.style.display = '';
+        if (els.connectionStatus) {
+            els.connectionStatus.className = 'connection-status connection-status--connected';
+            const statusText = els.connectionStatus.querySelector('.connection-status__text');
+            if (statusText) {
+                statusText.textContent = schema.database_name;
+            }
+        }
+
+        if (els.btnConnect) els.btnConnect.style.display = 'none';
+        if (els.btnDisconnect) els.btnDisconnect.style.display = '';
+
         const mlTools = document.getElementById('ml-tools');
         if (mlTools) mlTools.style.display = 'block';
+
         renderSchemaTree(schema);
+
+        // Update "Try:" query suggestions in bottom dock
+        const tableNames = Object.keys(schema.tables || {});
+        Chat.updateTrySuggestions(tableNames);
+
+        if (window.AnomalyScanner) {
+            window.AnomalyScanner.onConnect(tableNames);
+        }
     }
 
     function setDisconnected() {
-        els.connectionStatus.className = 'connection-status connection-status--disconnected';
-        els.connectionStatus.querySelector('.connection-status__text').textContent = 'Not connected';
-        els.btnConnect.style.display = '';
-        els.btnDisconnect.style.display = 'none';
-        els.schemaExplorer.style.display = 'none';
-        els.schemaTree.innerHTML = '';
+        if (els.connectionStatus) {
+            els.connectionStatus.className = 'connection-status connection-status--disconnected';
+            const statusText = els.connectionStatus.querySelector('.connection-status__text');
+            if (statusText) statusText.textContent = 'Not connected';
+        }
+
+        if (els.btnConnect) els.btnConnect.style.display = '';
+        if (els.btnDisconnect) els.btnDisconnect.style.display = 'none';
+        if (els.schemaExplorer) els.schemaExplorer.style.display = 'none';
+        if (els.schemaTree) els.schemaTree.innerHTML = '';
+
         const mlTools = document.getElementById('ml-tools');
         if (mlTools) mlTools.style.display = 'none';
-        if (window.AnomalyScanner) AnomalyScanner.onDisconnect();
+
+        if (window.AnomalyScanner) window.AnomalyScanner.onDisconnect();
+        if (Chat.resetEmptyState) Chat.resetEmptyState();
     }
 
     async function disconnect() {
         try {
             await fetch('/api/disconnect', { method: 'POST' });
-        } catch (_) { /* ignore */ }
+        } catch (_) {}
         setDisconnected();
         Chat.disableInput();
-        Chat.addAssistantMessage('Disconnected from database. Connect a new database to continue.');
+        Chat.addAssistantMessage('Disconnected. Connect a database to continue.');
         App.toast('Disconnected', 'info');
     }
 
@@ -286,87 +309,75 @@ const Database = (() => {
                 renderSchemaTree(data.schema);
                 App.toast('Schema refreshed', 'success');
             }
-        } catch (err) {
+        } catch (_) {
             App.toast('Failed to refresh schema', 'error');
         }
     }
 
     async function viewTableData(tableName) {
-        els.dataViewerTitle.textContent = `Data: ${tableName}`;
+        if (!els.dataViewerModal) return;
+        els.dataViewerTitle.textContent = tableName;
         els.dataViewerContent.innerHTML = '';
-        els.dataViewerLoader.style.display = 'flex';
+        els.dataViewerLoader.style.display = 'block';
         els.dataViewerModal.style.display = 'flex';
 
         try {
             const res = await fetch(`/api/table_data?table=${encodeURIComponent(tableName)}`);
             const data = await res.json();
-            
             els.dataViewerLoader.style.display = 'none';
 
-            if (data.success) {
-                if (data.data && data.data.rows && data.data.rows.length > 0) {
-                    const tableEl = Visualization.renderTable(data.data);
-                    els.dataViewerContent.appendChild(tableEl);
-                } else {
-                    els.dataViewerContent.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-tertiary);">No data found in this table.</div>';
-                }
+            if (data.success && data.data && data.data.rows && data.data.rows.length > 0) {
+                const tableEl = Visualization.renderTable(data.data);
+                els.dataViewerContent.appendChild(tableEl);
             } else {
-                els.dataViewerContent.innerHTML = `<div style="padding: 20px; color: var(--accent-danger);">${data.error || 'Failed to load data.'}</div>`;
+                els.dataViewerContent.innerHTML = '<div style="font-size: var(--text-xs); color: var(--mute); padding: 12px 0;">No rows found in this table.</div>';
             }
-        } catch (err) {
+        } catch (_) {
             els.dataViewerLoader.style.display = 'none';
-            els.dataViewerContent.innerHTML = '<div style="padding: 20px; color: var(--accent-danger);">Network error while fetching data.</div>';
+            els.dataViewerContent.innerHTML = '<div class="safety-statement--bad">Could not fetch table rows.</div>';
         }
     }
 
     function closeDataViewer() {
-        els.dataViewerModal.style.display = 'none';
+        if (els.dataViewerModal) els.dataViewerModal.style.display = 'none';
     }
 
+    /**
+     * Render inline table list (table names with row counts, quiet preview on click).
+     */
     function renderSchemaTree(schema) {
+        if (!els.schemaTree) return;
         els.schemaTree.innerHTML = '';
 
-        for (const [tableName, tableInfo] of Object.entries(schema.tables)) {
-            const tableEl = document.createElement('div');
-            tableEl.className = 'schema-table';
+        const container = document.createElement('div');
+        container.style.cssText = 'display: flex; flex-direction: column;';
 
-            const header = document.createElement('div');
-            header.className = 'schema-table__header';
-            header.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-                <span class="schema-table__name">${tableName}</span>
-                <span class="schema-table__count">${tableInfo.row_count}</span>
-                <button class="btn btn--icon schema-table__action" title="View Table Data" onclick="event.stopPropagation(); Database.viewTableData('${tableName}');">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-                <svg class="schema-table__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        for (const [tableName, tableInfo] of Object.entries(schema.tables || {})) {
+            const row = document.createElement('div');
+            row.className = 'table-item';
+            row.innerHTML = `
+                <span class="table-item__name">${tableName}</span>
+                <span class="table-item__count">${tableInfo.row_count} rows</span>
             `;
 
-            header.addEventListener('click', () => tableEl.classList.toggle('expanded'));
+            // Clicking opens quiet table preview
+            row.addEventListener('click', () => {
+                viewTableData(tableName);
+            });
 
-            const columns = document.createElement('div');
-            columns.className = 'schema-table__columns';
-
-            for (const col of tableInfo.columns) {
-                const colEl = document.createElement('div');
-                colEl.className = 'schema-column';
-                const isPk = tableInfo.primary_keys.includes(col.name);
-                colEl.innerHTML = `
-                    <span>${col.name}</span>
-                    ${isPk ? '<span class="schema-column__pk">PK</span>' : ''}
-                    <span class="schema-column__type">${col.type}</span>
-                `;
-                columns.appendChild(colEl);
-            }
-
-            tableEl.appendChild(header);
-            tableEl.appendChild(columns);
-            els.schemaTree.appendChild(tableEl);
+            container.appendChild(row);
         }
-        // Notify AnomalyScanner of available tables
-        const tableNames = Object.keys(schema.tables);
-        if (window.AnomalyScanner) AnomalyScanner.onConnect(tableNames);
+
+        els.schemaTree.appendChild(container);
     }
 
-    return { init, openModal, closeModal, setConnected, setDisconnected, viewTableData };
+    return {
+        init,
+        openModal,
+        closeModal,
+        setConnected,
+        setDisconnected,
+        viewTableData,
+        closeDataViewer
+    };
 })();

@@ -1,6 +1,7 @@
 /**
  * History Module
- * Renders the operation history sidebar and keeps it updated.
+ * CALM Design: Right slide-in panel, list of past questions with relative time,
+ * click to re-ask.
  */
 
 const History = (() => {
@@ -13,9 +14,6 @@ const History = (() => {
         els.statFailed = document.getElementById('stat-failed');
     }
 
-    /**
-     * Fetch and render the latest history from the server.
-     */
     async function refresh() {
         try {
             const res = await fetch('/api/history');
@@ -24,25 +22,21 @@ const History = (() => {
                 renderHistory(data.history);
                 renderStats(data.stats);
             }
-        } catch (_) { /* ignore */ }
+        } catch (_) {}
     }
 
     function renderStats(stats) {
-        els.statTotal.textContent = stats.total || 0;
-        els.statSuccess.textContent = stats.successful || 0;
-        els.statFailed.textContent = stats.failed || 0;
+        if (!stats) return;
+        if (els.statTotal) els.statTotal.textContent = stats.total || 0;
+        if (els.statSuccess) els.statSuccess.textContent = stats.successful || 0;
+        if (els.statFailed) els.statFailed.textContent = stats.failed || 0;
     }
 
     function renderHistory(history) {
+        if (!els.list) return;
+
         if (!history || history.length === 0) {
-            els.list.innerHTML = `
-                <div class="history-empty">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
-                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    <p>No operations yet</p>
-                </div>
-            `;
+            els.list.innerHTML = '<div style="font-size: var(--text-xs); color: var(--mute);">No operations yet.</div>';
             return;
         }
 
@@ -52,34 +46,25 @@ const History = (() => {
             el.className = 'history-item';
 
             const time = formatTime(item.timestamp);
-            const statusClass = item.success ? 'history-item__status--success' : 'history-item__status--error';
-            const statusText = item.success ? '✓ Success' : '✗ Failed';
+            const statusLabel = item.success ? '' : '<span style="color:var(--bad)">failed</span>';
 
             el.innerHTML = `
-                <div class="history-item__header">
-                    <span class="history-item__badge history-item__badge--${item.operation_type}">${item.operation_type}</span>
-                    <span class="history-item__time">${time}</span>
-                </div>
-                <div class="history-item__request">${escapeHtml(item.user_request)}</div>
+                <div class="history-item__query">${escapeHtml(item.user_request)}</div>
                 <div class="history-item__meta">
-                    <span class="${statusClass}">${statusText}</span>
-                    ${item.affected_rows > 0 ? `<span>${item.affected_rows} row(s)</span>` : ''}
+                    <span>${time}</span>
+                    ${statusLabel}
                 </div>
             `;
 
-            // Click to show details in chat
+            // Click to re-ask
             el.addEventListener('click', () => {
-                Chat.addAssistantMessage(
-                    `**History Entry #${item.id}**\n\n` +
-                    `**Request:** ${item.user_request}\n` +
-                    `**Operation:** ${item.operation_type}\n` +
-                    `**Explanation:** ${item.explanation}\n` +
-                    `**Status:** ${item.success ? 'Success' : 'Failed'}\n` +
-                    `**Rows affected:** ${item.affected_rows}\n` +
-                    (item.error ? `**Error:** ${item.error}\n` : '') +
-                    `**Time:** ${new Date(item.timestamp).toLocaleString()}`,
-                    item.sql
-                );
+                const input = document.getElementById('chat-input');
+                if (input && !input.disabled) {
+                    input.value = item.user_request;
+                    const rightSidebar = document.getElementById('sidebar-right');
+                    if (rightSidebar) rightSidebar.classList.remove('open');
+                    Chat.sendMessage();
+                }
             });
 
             els.list.appendChild(el);
@@ -87,6 +72,7 @@ const History = (() => {
     }
 
     function formatTime(timestamp) {
+        if (!timestamp) return '';
         const date = new Date(timestamp);
         const now = new Date();
         const diffMs = now - date;
@@ -99,6 +85,7 @@ const History = (() => {
     }
 
     function escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
