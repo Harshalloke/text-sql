@@ -1,6 +1,6 @@
 # QueryMind — Natural Language Database Assistant
 
-An intelligent web application that lets you interact with databases using plain English instead of SQL. Powered by Google Gemini AI.
+An intelligent web application that lets you interact with databases using plain English instead of SQL. 
 
 ## Features
 
@@ -17,7 +17,6 @@ An intelligent web application that lets you interact with databases using plain
 
 ### 1. Prerequisites
 - Python 3.10 or higher
-- A Google Gemini API key ([Get one free](https://aistudio.google.com/apikey))
 
 ### 2. Setup
 
@@ -44,10 +43,6 @@ pip install -r requirements.txt
 # Copy the example env file
 copy .env.example .env     # Windows
 cp .env.example .env       # macOS/Linux
-
-# Edit .env and add your Gemini API key
-GEMINI_API_KEY=your_actual_key_here
-```
 
 ### 4. Run
 
@@ -116,7 +111,6 @@ text-to-sql/
 ## Tech Stack
 
 - **Backend:** Python / Flask
-- **AI Engine:** Google Gemini API (gemini-2.0-flash)
 - **Database:** SQLAlchemy (multi-DB support)
 - **Frontend:** Vanilla HTML/CSS/JS
 - **Charts:** Chart.js
